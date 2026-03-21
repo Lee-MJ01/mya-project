@@ -1,0 +1,51 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '4.0.4'
+	id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.mya'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(21)
+	}
+}
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	// 1. 웹 개발 (REST API 구축용)
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+
+	// 2. 데이터베이스 및 JPA (TiDB 연동용)
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	runtimeOnly 'com.mysql:mysql-connector-j'
+
+	// 3. 입력값 검증 (회원가입/시간 입력 유효성 체크)
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+	// 4. 개발 생산성 향상 (Lombok)
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+
+	// 5. 개발 편의 도구 (코드 수정 시 자동 재시작)
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
+	// 테스트 설정
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
