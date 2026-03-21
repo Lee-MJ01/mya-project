@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: Mya-Server
+  datasource:
+    # TiDB Cloud 접속 정보
+    url: ${MYA_DB_URL}
+    username: ${MYA_DB_USERNAME}
+    password: ${MYA_DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true # 실행되는 SQL을 콘솔에서 확인하기 위함
+    properties:
+      hibernate:
+        # TiDB 전용 방언(Dialect) 설정으로 쿼리 최적화
+        dialect: org.hibernate.dialect.TiDBDialect
+        format_sql: true
+
+# 서버 포트 설정
+server:
+  port: 8080
