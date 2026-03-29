@@ -9,13 +9,14 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect
     hibernate:
       ddl-auto: update
     show-sql: true # 실행되는 SQL을 콘솔에서 확인하기 위함
     properties:
       hibernate:
         # TiDB 전용 방언(Dialect) 설정으로 쿼리 최적화
-        dialect: org.hibernate.dialect.TiDBDialect
+        dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
 
 # 서버 포트 설정

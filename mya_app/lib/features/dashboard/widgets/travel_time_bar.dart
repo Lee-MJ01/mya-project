@@ -1,3 +1,6 @@
+import 'package:flutter/material.dart';
+import 'package:mya_project/core/constants.dart'; // kActionOrange 사용을 위해 필요
+
 class TravelTimeBar extends StatelessWidget {
   final int prepMinutes; // 개인 준비 시간 [cite: 12]
   final int transitMinutes; // 대중교통 이동 시간

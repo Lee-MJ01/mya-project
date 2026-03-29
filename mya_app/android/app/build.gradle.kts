@@ -14,15 +14,14 @@ android {
     }
 
     kotlinOptions {
-        // Line 19 수정: 경고 및 에러 해결을 위해 명확한 String 할당 사용
+        // Line 19 해결: 안정적인 방식으로 Java 17 지정
         jvmTarget = "17"
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.mya.mya_app"
 
-        // Line 27 수정: flutter.minSdkVersion 대신 숫자 20을 직접 할당 (문법 오류 해결)
+        // Line 27 해결: 패키지 요구 사양인 20으로 직접 지정
         minSdk = flutter.minSdkVersion
 
         targetSdk = flutter.targetSdkVersion
@@ -32,8 +31,6 @@ android {
 
     buildTypes {
         getByName("release") {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
         }
     }

@@ -16,6 +16,7 @@ dependencies:
   daum_postcode_search: ^0.0.4
   permission_handler: ^11.3.1
   geolocator: ^11.0.0
+  geocoding: ^3.0.0 # 주소를 위경도로 변환하기 위한 패키지
 
   # 통신 및 데이터 관련
   http: ^1.2.1

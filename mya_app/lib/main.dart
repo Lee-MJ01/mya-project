@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:mya_project/features/dashboard/screens/main_dashboard.dart';
 
 // 디자이너 지정 컬러 시스템
-const Color kTrustNavy = Color(0密A237E);
+const Color kTrustNavy = Color(0xFF2A237E);
 const Color kSmartMint = Color(0xFF26A69A);
 const Color kActionOrange = Color(0xFFFF7043);
 
@@ -24,7 +25,7 @@ class MyaApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const MainDashboard(),
+      home: MainDashboard(),
     );
   }
 }

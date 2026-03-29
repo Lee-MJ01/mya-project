@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:daum_postcode_search/daum_postcode_search.dart';
+import 'package:geocoding/geocoding.dart'; // Geocoding 추가
+import 'package:mya_project/core/constants.dart';
+import 'package:mya_project/services/user_service.dart';
+import 'package:mya_project/features/auth/models/signup_request.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -12,261 +17,199 @@ class _SignupScreenState extends State<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
   int _currentStep = 0;
 
-  // 1단계: 기본 정보 컨트롤러
+  // v1.4 명세에 맞춘 컨트롤러 및 변수
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _nicknameController = TextEditingController();
   final _phoneController = TextEditingController();
-
-  // 2단계: 먀비서 개인화 설정 컨트롤러
   final _addressController = TextEditingController();
-  double _prepTime = 30.0;
+
+  double _latitude = 0.0;
+  double _longitude = 0.0;
+  double _avgPrepTime = 30.0;
+  bool _termsAgreed = false; // 필수 약관 동의
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    _nicknameController.dispose();
-    _phoneController.dispose();
-    _addressController.dispose();
+    for (var controller in [_emailController, _passwordController, _nicknameController, _phoneController, _addressController]) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
-  // 주소 검색 로직 (0.0.4 버전 - Navigator 리턴 방식)
+  // 핵심 미션: 주소 검색 및 위경도 추출 로직
   Future<void> _searchAddress() async {
-    // 1. 주소 검색 화면을 띄우고 결과를 기다립니다 (await)
     final DataModel? data = await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => DaumPostcodeSearch(),
-      ),
+      MaterialPageRoute(builder: (context) => DaumPostcodeSearch()),
     );
 
-    // 2. 결과값이 존재한다면 (사용자가 주소를 선택했다면) 상태를 업데이트합니다.
-    if (data != null && mounted) {
+    if (data != null) {
       setState(() {
-        _addressController.text = data.address; // 선택된 주소를 텍스트 필드에 입력
+        _addressController.text = data.address;
       });
+
+      // Geocoding: 주소를 좌표로 변환
+      try {
+        List<Location> locations = await locationFromAddress(data.address);
+        if (locations.isNotEmpty) {
+          setState(() {
+            _latitude = locations.first.latitude;
+            _longitude = locations.first.longitude;
+          });
+          debugPrint("추출된 좌표: $_latitude, $_longitude");
+        }
+      } catch (e) {
+        _showErrorSnackBar("좌표 추출에 실패했습니다. 직접 위치를 지정하거나 다시 시도해주세요.");
+      }
     }
   }
 
-  void _submitSignup() {
-    if (_formKey.currentState!.validate()) {
-      final signupData = {
-        "email": _emailController.text,
-        "password": _passwordController.text,
-        "nickname": _nicknameController.text,
-        "phone": _phoneController.text,
-        "address": _addressController.text,
-        "averagePrepTime": _prepTime.toInt(),
-      };
-
-      print("전송 데이터: $signupData");
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('회원가입 처리 중...')),
-      );
-    }
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('먀비서 가입하기'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('회원가입 (v1.4)'), centerTitle: true),
       body: Form(
         key: _formKey,
         child: Stepper(
           type: StepperType.vertical,
           currentStep: _currentStep,
           onStepContinue: () {
-            if (_formKey.currentState!.validate()) {
-              if (_currentStep < 2) {
-                setState(() => _currentStep += 1);
-              } else {
-                _submitSignup();
-              }
+            if (_currentStep < 2) {
+              setState(() => _currentStep++);
+            } else {
+              _submitSignup();
             }
           },
           onStepCancel: () {
-            if (_currentStep > 0) setState(() => _currentStep -= 1);
+            if (_currentStep > 0) setState(() => _currentStep--);
           },
-          controlsBuilder: (context, details) {
-            return Padding(
-              padding: const EdgeInsets.only(top: 20),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: details.onStepContinue,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.indigo,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: Text(_currentStep == 2 ? '가입 완료' : '다음 단계'),
-                    ),
-                  ),
-                  if (_currentStep > 0) ...[
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: details.onStepCancel,
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        child: const Text('이전'),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            );
-          },
-          steps: [
-            Step(
-              title: const Text('계정 정보'),
-              isActive: _currentStep >= 0,
-              state: _currentStep > 0 ? StepState.complete : StepState.indexed,
-              content: Column(
-                children: [
-                  TextFormField(
-                    controller: _emailController,
-                    decoration: const InputDecoration(
-                      labelText: '이메일',
-                      prefixIcon: Icon(Icons.email_outlined),
-                    ),
-                    keyboardType: TextInputType.emailAddress,
-                    validator: (value) =>
-                    (value == null || !value.contains('@'))
-                        ? '이메일 형식이 올바르지 않습니다'
-                        : null,
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _passwordController,
-                    decoration: const InputDecoration(
-                      labelText: '비밀번호',
-                      prefixIcon: Icon(Icons.lock_outline),
-                    ),
-                    obscureText: true,
-                    validator: (value) =>
-                    (value == null || value.length < 6)
-                        ? '비밀번호는 6자 이상이어야 합니다'
-                        : null,
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _nicknameController,
-                    decoration: const InputDecoration(
-                      labelText: '닉네임',
-                      prefixIcon: Icon(Icons.person_outline),
-                    ),
-                    validator: (value) =>
-                    (value == null || value.isEmpty)
-                        ? '닉네임을 입력하세요'
-                        : null,
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _phoneController,
-                    decoration: const InputDecoration(
-                      labelText: '전화번호',
-                      prefixIcon: Icon(Icons.phone_android_outlined),
-                    ),
-                    keyboardType: TextInputType.phone,
-                    validator: (value) =>
-                    (value == null || value.isEmpty)
-                        ? '전화번호를 입력하세요'
-                        : null,
-                  ),
-                ],
-              ),
+          steps: _buildSteps(),
+        ),
+      ),
+    );
+  }
+
+  List<Step> _buildSteps() {
+    return [
+      Step(
+        title: const Text('계정 정보'),
+        isActive: _currentStep >= 0,
+        content: Column(
+          children: [
+            TextFormField(controller: _emailController, decoration: const InputDecoration(labelText: '이메일 (@ 포함)')),
+            TextFormField(controller: _passwordController, decoration: const InputDecoration(labelText: '비밀번호 (8자 이상)'), obscureText: true),
+            TextFormField(controller: _nicknameController, decoration: const InputDecoration(labelText: '닉네임')),
+            TextFormField(controller: _phoneController, decoration: const InputDecoration(labelText: '전화번호 (010-XXXX-XXXX)')),
+          ],
+        ),
+      ),
+      Step(
+        title: const Text('개인화 설정'),
+        isActive: _currentStep >= 1,
+        content: Column(
+          children: [
+            TextFormField(
+              controller: _addressController,
+              readOnly: true,
+              onTap: _searchAddress,
+              decoration: const InputDecoration(labelText: '주요 출발지 주소', suffixIcon: Icon(Icons.search)),
             ),
-            Step(
-              title: const Text('비서 개인 설정'),
-              isActive: _currentStep >= 1,
-              state: _currentStep > 1 ? StepState.complete : StepState.indexed,
-              content: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '정확한 이동 시간 계산을 위해 정보가 필요해요.',
-                    style: TextStyle(fontSize: 13, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _addressController,
-                    readOnly: true,
-                    decoration: InputDecoration(
-                      labelText: '주요 출발지 (집 주소)',
-                      prefixIcon: const Icon(Icons.home_outlined),
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.search),
-                        onPressed: _searchAddress,
-                      ),
-                    ),
-                    onTap: _searchAddress,
-                    validator: (value) =>
-                    (value == null || value.isEmpty)
-                        ? '주소를 검색해주세요'
-                        : null,
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('평균 외출 준비 시간',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
-                      Text('${_prepTime.toInt()}분',
-                          style: const TextStyle(color: Colors.indigo,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                  Slider(
-                    value: _prepTime,
-                    min: 0,
-                    max: 120,
-                    divisions: 24,
-                    label: '${_prepTime.toInt()}분',
-                    activeColor: Colors.indigo,
-                    onChanged: (double value) {
-                      setState(() {
-                        _prepTime = value;
-                      });
-                    },
-                  ),
-                  const Text(
-                    '씻고 나갈 준비를 마치는 데 걸리는 평균 시간입니다.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                ],
-              ),
-            ),
-            Step(
-              title: const Text('권한 설정 및 완료'),
-              isActive: _currentStep >= 2,
-              content: const Column(
-                children: [
-                  ListTile(
-                    leading: CircleAvatar(
-                        child: Icon(Icons.location_on, size: 20)),
-                    title: Text('위치 정보 권한'),
-                    subtitle: Text('실시간 대중교통 경로 도출을 위해 필요합니다.'),
-                  ),
-                  ListTile(
-                    leading: CircleAvatar(child: Icon(Icons.mic, size: 20)),
-                    title: Text('마이크 권한'),
-                    subtitle: Text('음성 기록 및 일정 자동 추출을 위해 필요합니다.'),
-                  ),
-                ],
-              ),
+            const SizedBox(height: 20),
+            Text('평균 준비 시간: ${_avgPrepTime.toInt()}분'),
+            Slider(
+              value: _avgPrepTime,
+              min: 0, max: 120, divisions: 24, // 5분 단위 설정
+              onChanged: (v) => setState(() => _avgPrepTime = v),
             ),
           ],
         ),
+      ),
+      Step(
+        title: const Text('약관 및 권한'),
+        isActive: _currentStep >= 2,
+        content: Column(
+          children: [
+            CheckboxListTile(
+              title: const Text('필수 약관에 동의합니다.'),
+              value: _termsAgreed,
+              onChanged: (v) => setState(() => _termsAgreed = v ?? false),
+            ),
+            const Text('위치 및 마이크 권한은 서비스 이용에 필수입니다.'),
+          ],
+        ),
+      ),
+    ];
+  }
+
+  final UserService _userService = UserService();
+  bool _isLoading = false;
+
+  void _submitSignup() async {
+    // 1. 필수 약관 동의 확인
+    if (!_termsAgreed) {
+      _showErrorSnackBar("필수 약관에 동의해주세요.");
+      return;
+    }
+
+    // 2. 위치/마이크 권한 확인
+    bool hasPermission = await _requestPermissions();
+    if (!hasPermission) {
+      _showErrorSnackBar("기능 이용을 위해 위치 및 마이크 권한이 필요합니다.");
+      return;
+    }
+
+    // 3. 로딩 시작 및 데이터 전송
+    setState(() => _isLoading = true);
+    try {
+      await _userService.signup({
+        "email": _emailController.text,
+        "password": _passwordController.text,
+        "nickname": _nicknameController.text,
+        "phoneNumber": _phoneController.text,
+        "address": _addressController.text,
+        "latitude": _latitude,
+        "longitude": _longitude,
+        "avgPrepTime": _avgPrepTime.toInt(),
+        "termsAgreed": _termsAgreed,
+      });
+
+      // 성공 시 대시보드로 이동
+      if (mounted) Navigator.pushReplacementNamed(context, '/main');
+    } catch (e) {
+      _showErrorDialog(e.toString()); // 서버 에러 팝업 (중복 이메일 등)
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<bool> _requestPermissions() async {
+    // 위치 및 마이크 권한 동시 요청
+    Map<Permission, PermissionStatus> statuses = await [
+      Permission.location,
+      Permission.microphone,
+    ].request();
+
+    if (statuses[Permission.location]!.isGranted &&
+        statuses[Permission.microphone]!.isGranted) {
+      return true;
+    }
+    return false;
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('가입 실패', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text(message),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('확인')),
+        ],
       ),
     );
   }
