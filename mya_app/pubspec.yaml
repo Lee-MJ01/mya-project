@@ -1,0 +1,36 @@
+name: mya_project
+description: "지능형 일정 관리 비서 - 먀비서(Mya)"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8 # 최신 버전 하나만 유지
+
+  # 위치 및 주소 관련
+  daum_postcode_search: ^0.0.4
+  permission_handler: ^11.3.1
+  geolocator: ^11.0.0
+
+  # 통신 및 데이터 관련
+  http: ^1.2.1
+  intl: ^0.19.0 # 시간 포맷팅 및 다국어 지원 (준비 시간 계산 필수)
+
+  # 상태 관리 (선택: Provider 제안)
+  provider: ^6.1.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0 # SDK 버전에 맞는 안정적인 버전으로 수정
+
+flutter:
+  uses-material-design: true
+  # 향후 로고나 아이콘 추가 시 이 아래 assets 섹션을 활성화하세요.
+  # assets:
+  #   - assets/images/
